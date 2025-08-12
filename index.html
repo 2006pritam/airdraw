@@ -1,83 +1,143 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>AirDraw — draw in the air with your hand</title>
-  <style>
-    :root {
-      --bg: #0b0e13;
-      --panel: #131823;
-      --text: #e9eefc;
-      --muted: #8ea0c9;
-      --accent: #5aa1ff;
-      --accent-2: #6ee7b7;
-      --danger: #ff6b6b;
-      --shadow: 0 10px 30px rgba(0,0,0,.35);
-      --radius: 14px;
-    }
-    *{box-sizing:border-box}
-    html,body{height:100%;background:var(--bg);color:var(--text);margin:0;font-family:Inter,ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,"Apple Color Emoji","Segoe UI Emoji"}
-    .app{display:grid;grid-template-columns:1fr 350px;gap:18px;max-width:min(1500px,95vw);margin:24px auto;align-items:start}
-    .stage{position:relative;background:#0e121a;border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow);min-height:60vh}
-    video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transform:scaleX(-1);opacity:.4;filter:saturate(.9) contrast(1.05)}
-    canvas#overlay, canvas#paint{position:absolute;inset:0;width:100%;height:100%}
-    canvas#overlay{pointer-events:none}
-
-    .hud{position:absolute;left:14px;bottom:14px;background:rgba(0,0,0,.45);backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,.08);padding:10px 12px;border-radius:12px;display:flex;gap:10px;align-items:center}
-    .dot{width:10px;height:10px;border-radius:999px;background:#888}
-    .dot.live{background:var(--accent)}
-    .hint{color:var(--muted);font-size:12px}
-
-    .panel{position:sticky;top:18px;background:linear-gradient(180deg,rgba(255,255,255,.04),rgba(255,255,255,.02));border:1px solid rgba(255,255,255,.06);padding:16px 16px 12px;border-radius:var(--radius);box-shadow:var(--shadow)}
-    .panel h2{margin:2px 0 12px;font-size:18px;letter-spacing:.2px}
-    .row{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:10px 0}
-    .row label{font-size:14px;color:var(--muted)}
-    .panel input[type=color]{width:44px;height:32px;border:none;background:#000;border-radius:8px;cursor:pointer}
-    .panel input[type=range]{width:100%}
-    .btns{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:8px}
-    button{appearance:none;border:none;background:#1a2130;color:var(--text);padding:10px 12px;border-radius:12px;cursor:pointer;font-weight:600;transition:.2s transform,.2s background}
-    button:hover{transform:translateY(-1px);background:#202b40}
-    button.primary{background:linear-gradient(135deg,var(--accent),#4f46e5)}
-    button.primary:hover{background:linear-gradient(135deg,#69afff,#6157ff)}
-    button.ghost{background:#171d2a}
-    button.danger{background:linear-gradient(135deg,#ff8181,var(--danger))}
-    .kbd{font-family:ui-monospace,Menlo,Consolas,monospace;background:#0d1320;border:1px solid rgba(255,255,255,.08);padding:2px 6px;border-radius:8px;color:#c5d3ff}
-
-    .tips{margin-top:10px;padding-top:10px;border-top:1px dashed rgba(255,255,255,.1);color:var(--muted);font-size:13px;line-height:1.45}
-    .tips b{color:#cfe1ff}
-
-    .toast{position:fixed;right:18px;bottom:18px;background:#101726;border:1px solid rgba(255,255,255,.09);padding:12px 14px;border-radius:12px;box-shadow:var(--shadow);display:none}
-    .warn{color:#ffd166}
-  </style>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>AirDraw — draw in the air</title>
+<style>
+  :root{
+    --bg:#0b0f16; --panel:#0f1520; --glass:rgba(16,23,38,.5);
+    --text:#e9eefc; --muted:#95a4c8; --line:#20304a;
+    --accent:#5aa1ff; --accent-2:#6ee7b7; --danger:#ff6b6b; --warn:#ffd166;
+    --radius:14px; --shadow:0 10px 30px rgba(0,0,0,.35);
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%;margin:0;background:radial-gradient(1200px 800px at 70% -10%,rgba(69,97,255,.08),transparent 55%),var(--bg);color:var(--text);font-family:Inter,ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial}
+  .app{display:grid;grid-template-rows:auto 1fr;min-height:100vh}
+  /* Top App Bar */
+  .topbar{
+    position:sticky;top:0;z-index:30;
+    display:flex;align-items:center;justify-content:space-between;gap:10px;
+    padding:10px 14px;background:linear-gradient(180deg,rgba(9,13,20,.75),rgba(9,13,20,.45));
+    border-bottom:1px solid rgba(255,255,255,.06);backdrop-filter:blur(10px)
+  }
+  .brand{display:flex;align-items:center;gap:10px;font-weight:700;letter-spacing:.2px}
+  .brand .dot{width:10px;height:10px;border-radius:999px;background:#7a89a6;box-shadow:0 0 0 2px rgba(90,161,255,.12) inset}
+  .brand .dot.live{background:var(--accent)}
+  .actions{display:flex;gap:8px}
+  button{
+    appearance:none;border:none;border-radius:12px;cursor:pointer;font-weight:600;color:var(--text);
+    background:#152036;padding:10px 12px;transition:.2s transform,.25s background;
+    border:1px solid rgba(255,255,255,.06)
+  }
+  button:hover{transform:translateY(-1px);background:#192748}
+  .primary{background:linear-gradient(135deg,var(--accent),#6157ff);border:none}
+  .primary:hover{background:linear-gradient(135deg,#6db0ff,#6e66ff)}
+  .danger{background:linear-gradient(135deg,#ff8c8c,var(--danger));border:none}
+  .ghost{background:#121a2d}
+  /* Stage */
+  .stage-wrap{position:relative;display:grid;place-items:center;padding:16px}
+  .stage{
+    position:relative;width:min(1400px,95vw);height:min(72vh,72vw);
+    background:#0e1421;border-radius:18px;box-shadow:var(--shadow);overflow:hidden
+  }
+  video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transform:scaleX(-1);opacity:.3;filter:saturate(.9) contrast(1.05)}
+  canvas#overlay,canvas#paint{position:absolute;inset:0;width:100%;height:100%}
+  /* Tool Dock */
+  .dock{
+    position:absolute;left:16px;top:16px;z-index:20;
+    display:flex;flex-direction:column;gap:10px;padding:12px;
+    background:var(--glass);border:1px solid rgba(255,255,255,.08);backdrop-filter:blur(10px);
+    border-radius:14px;box-shadow:var(--shadow);transition:opacity .25s,transform .25s
+  }
+  .dock.collapsed{opacity:.0;pointer-events:none;transform:translateY(-8px)}
+  .group{display:flex;gap:8px;align-items:center;border-bottom:1px dashed rgba(255,255,255,.08);padding-bottom:10px;margin-bottom:10px}
+  .group:last-child{border-bottom:none;padding-bottom:0;margin-bottom:0}
+  .icon-btn{
+    width:40px;height:40px;border-radius:12px;display:grid;place-items:center;background:#10182a;border:1px solid rgba(255,255,255,.06)
+  }
+  .icon-btn.active{outline:2px solid rgba(90,161,255,.55);background:#152446}
+  input[type=color]{width:42px;height:40px;padding:0;border-radius:10px;border:1px solid rgba(255,255,255,.08);background:#0d1526;cursor:pointer}
+  .slider{display:flex;align-items:center;gap:10px}
+  .slider label{color:var(--muted);font-size:12px;width:110px}
+  input[type=range]{width:200px}
+  .kbd{font-family:ui-monospace,Menlo,Consolas,monospace;background:#0d1320;border:1px solid rgba(255,255,255,.08);padding:2px 6px;border-radius:8px;color:#c5d3ff;font-size:12px}
+  /* HUD */
+  .hud{
+    position:absolute;left:16px;bottom:16px;display:flex;gap:10px;align-items:center;
+    background:rgba(0,0,0,.45);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,.08);
+    padding:10px 12px;border-radius:12px
+  }
+  .status{color:var(--muted);font-size:12px}
+  .live-dot{width:10px;height:10px;border-radius:999px;background:#7a89a6}
+  .live-dot.live{background:var(--accent-2)}
+  /* Toast */
+  .toast{position:fixed;right:18px;bottom:18px;background:#101726;border:1px solid rgba(255,255,255,.09);padding:12px 14px;border-radius:12px;box-shadow:var(--shadow);display:none}
+  .warn{color:var(--warn)}
+  /* Responsive */
+  @media (max-width: 920px){
+    .dock{left:12px;top:12px}
+    input[type=range]{width:160px}
+  }
+</style>
 </head>
 <body>
   <div class="app">
-    <div class="stage" id="stage">
-      <video id="video" playsinline></video>
-      <canvas id="overlay"></canvas>
-      <canvas id="paint"></canvas>
-      <div class="hud"><div class="dot" id="dot"></div><div class="hint" id="status">Waiting for camera…</div></div>
-    </div>
+    <header class="topbar">
+      <div class="brand">
+        <div class="dot" id="brandDot"></div>
+        <div>AirDraw</div>
+      </div>
+      <div class="actions">
+        <button id="toggleVideo" class="ghost" title="Show/Hide video (V)">Hide Video (V)</button>
+        <button id="clear" class="danger" title="Clear canvas (C)">Clear (C)</button>
+        <button id="save" class="primary" title="Save PNG (S)">Save PNG</button>
+      </div>
+    </header>
 
-    <aside class="panel">
-      <h2>AirDraw Controls</h2>
-      <div class="row"><label>Draw color</label><input type="color" id="color" value="#5aa1ff"></div>
-      <div class="row"><label>Brush size <span id="sizeLabel" class="kbd">6px</span></label><input type="range" id="size" min="1" max="40" value="6"></div>
-      <div class="row"><label>Pointer smoothing <span id="smoothLabel" class="kbd">0.35</span></label><input type="range" id="smooth" min="0" max="0.9" step="0.01" value="0.35"></div>
-      <div class="row"><label>Pinch sensitivity <span id="pinchLabel" class="kbd">0.06</span></label><input type="range" id="pinch" min="0.03" max="0.12" step="0.005" value="0.06"></div>
-      <div class="btns">
-        <button id="clear" class="danger">Clear (C)</button>
-        <button id="save" class="primary">Save PNG</button>
-        <button id="toggleVideo" class="ghost">Hide Video (V)</button>
-        <button id="erase" class="ghost">Eraser (E)</button>
-      </div>
-      <div class="tips">
-        <p><b>How to draw</b>: Pinch your <b>thumb + index</b> to start drawing. Open your hand to stop. The canvas mirrors like a selfie.</p>
-        <p><b>Shortcuts</b>: <span class="kbd">E</span> toggle eraser, <span class="kbd">C</span> clear, <span class="kbd">V</span> show/hide video, <span class="kbd">S</span> save.</p>
-        <p><b>Notes</b>: Good lighting helps tracking. Keep your hand within the video frame.</p>
-      </div>
-    </aside>
+    <main class="stage-wrap">
+      <section class="stage" id="stage">
+        <video id="video" playsinline></video>
+        <canvas id="overlay"></canvas>
+        <canvas id="paint"></canvas>
+
+        <!-- Tool Dock -->
+        <aside class="dock" id="dock">
+          <div class="group">
+            <button id="brushTool" class="icon-btn active" title="Brush (B)">🖊️</button>
+            <button id="eraserTool" class="icon-btn" title="Eraser (E)">🩹</button>
+            <input type="color" id="color" value="#5aa1ff" title="Pick color" />
+          </div>
+          <div class="group">
+            <div class="slider">
+              <label>Brush size <span class="kbd" id="sizeLabel">6px</span></label>
+              <input type="range" id="size" min="1" max="40" value="6">
+            </div>
+          </div>
+          <div class="group">
+            <div class="slider">
+              <label>Smoothing <span class="kbd" id="smoothLabel">0.35</span></label>
+              <input type="range" id="smooth" min="0" max="0.9" step="0.01" value="0.35">
+            </div>
+          </div>
+          <div class="group">
+            <div class="slider">
+              <label>Pinch sensitivity <span class="kbd" id="pinchLabel">0.06</span></label>
+              <input type="range" id="pinch" min="0.03" max="0.12" step="0.005" value="0.06">
+            </div>
+          </div>
+          <div style="color:var(--muted);font-size:12px">
+            Pinch thumb+index to draw. Open to stop. Mirror view.
+          </div>
+        </aside>
+
+        <!-- HUD -->
+        <div class="hud">
+          <div class="live-dot" id="hudLive"></div>
+          <div class="status" id="status">Waiting for camera…</div>
+        </div>
+      </section>
+    </main>
   </div>
 
   <div class="toast" id="toast"></div>
@@ -88,12 +148,16 @@
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.min.js"></script>
 
   <script>
+    // Elements
     const video = document.getElementById('video');
     const overlay = document.getElementById('overlay');
     const paint = document.getElementById('paint');
     const stage = document.getElementById('stage');
+    const dock = document.getElementById('dock');
+
     const statusEl = document.getElementById('status');
-    const dot = document.getElementById('dot');
+    const hudLive = document.getElementById('hudLive');
+    const brandDot = document.getElementById('brandDot');
     const toast = document.getElementById('toast');
 
     const colorEl = document.getElementById('color');
@@ -103,12 +167,14 @@
     const sizeLabel = document.getElementById('sizeLabel');
     const smoothLabel = document.getElementById('smoothLabel');
     const pinchLabel = document.getElementById('pinchLabel');
+
     const clearBtn = document.getElementById('clear');
     const saveBtn = document.getElementById('save');
-    const eraseBtn = document.getElementById('erase');
     const toggleVideoBtn = document.getElementById('toggleVideo');
+    const brushTool = document.getElementById('brushTool');
+    const eraserTool = document.getElementById('eraserTool');
 
-    // Resize canvases to match stage
+    // Canvas setup
     function fitCanvases(){
       const rect = stage.getBoundingClientRect();
       [overlay, paint].forEach(c => { c.width = rect.width; c.height = rect.height; });
@@ -121,25 +187,31 @@
     pctx.lineCap = 'round';
     pctx.lineJoin = 'round';
 
+    // Dock auto-hide (progressive disclosure)
+    let dockTimer = null;
+    function scheduleDockHide(){
+      clearTimeout(dockTimer);
+      dock.classList.remove('collapsed');
+      dockTimer = setTimeout(()=> dock.classList.add('collapsed'), 2500);
+    }
+    stage.addEventListener('mousemove', scheduleDockHide);
+    stage.addEventListener('touchstart', scheduleDockHide);
+    scheduleDockHide();
+
+    // State
     let isDrawing = false;
     let isEraser = false;
-    let last = null; // last smoothed point
+    let last = null;
 
     function lerp(a,b,t){ return a + (b-a)*t; }
-
     function toScreen(xNorm, yNorm){
-      // MediaPipe gives normalized coords. Our video is mirrored, so mirror x.
-      return {
-        x: (1 - xNorm) * overlay.width,
-        y: yNorm * overlay.height
-      };
+      return { x:(1-xNorm)*overlay.width, y:yNorm*overlay.height };
     }
-
     function setStatus(text, live=false){
       statusEl.textContent = text;
-      dot.classList.toggle('live', live);
+      hudLive.classList.toggle('live', live);
+      brandDot.classList.toggle('live', live);
     }
-
     function showToast(msg, cls=''){
       toast.textContent = msg;
       toast.className = 'toast ' + cls;
@@ -154,10 +226,10 @@
 
     clearBtn.addEventListener('click', ()=>{
       pctx.clearRect(0,0,paint.width,paint.height);
+      showToast('Canvas cleared');
     });
 
     saveBtn.addEventListener('click', ()=>{
-      // Compose paint over a transparent background at canvas size
       const out = document.createElement('canvas');
       out.width = paint.width; out.height = paint.height;
       const ctx = out.getContext('2d');
@@ -165,38 +237,36 @@
       const url = out.toDataURL('image/png');
       const a = document.createElement('a');
       a.href = url; a.download = 'AirDraw.png'; a.click();
-      showToast('Saved drawing as PNG');
-    });
-
-    eraseBtn.addEventListener('click', ()=>{
-      isEraser = !isEraser;
-      eraseBtn.textContent = isEraser ? 'Eraser: ON (E)' : 'Eraser (E)';
-      eraseBtn.classList.toggle('primary', isEraser);
+      showToast('Saved PNG');
     });
 
     toggleVideoBtn.addEventListener('click', ()=>{
-      video.style.opacity = (video.style.opacity === '0') ? '.4' : '0';
-      toggleVideoBtn.textContent = (video.style.opacity === '0') ? 'Show Video (V)' : 'Hide Video (V)';
+      const hidden = video.style.opacity === '0';
+      video.style.opacity = hidden ? '.3' : '0';
+      toggleVideoBtn.textContent = hidden ? 'Hide Video (V)' : 'Show Video (V)';
     });
+
+    function setTool(eraser){
+      isEraser = eraser;
+      eraserTool.classList.toggle('active', eraser);
+      brushTool.classList.toggle('active', !eraser);
+    }
+    brushTool.addEventListener('click', ()=> setTool(false));
+    eraserTool.addEventListener('click', ()=> setTool(true));
 
     // Keyboard shortcuts
     addEventListener('keydown', (e)=>{
-      if(e.key.toLowerCase()==='c') clearBtn.click();
-      if(e.key.toLowerCase()==='s') saveBtn.click();
-      if(e.key.toLowerCase()==='e') eraseBtn.click();
-      if(e.key.toLowerCase()==='v') toggleVideoBtn.click();
+      const k = e.key.toLowerCase();
+      if(k==='c') clearBtn.click();
+      if(k==='s') saveBtn.click();
+      if(k==='v') toggleVideoBtn.click();
+      if(k==='e') setTool(!isEraser);
+      if(k==='b') setTool(false);
     });
 
     // MediaPipe Hands setup
-    const hands = new Hands({
-      locateFile: (file)=> `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
-    });
-    hands.setOptions({
-      maxNumHands: 1,
-      modelComplexity: 1,
-      minDetectionConfidence: 0.6,
-      minTrackingConfidence: 0.6
-    });
+    const hands = new Hands({ locateFile: (file)=> `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}` });
+    hands.setOptions({ maxNumHands: 1, modelComplexity: 1, minDetectionConfidence: 0.6, minTrackingConfidence: 0.6 });
 
     hands.onResults(onResults);
 
@@ -208,15 +278,10 @@
         const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: false });
         video.srcObject = stream;
         await video.play();
-        setStatus('Tracking hand — pinch thumb + index to draw', true);
-
-        // Use CameraUtils so Hands receives frames efficiently
+        setStatus('Tracking — pinch thumb+index to draw', true);
         camera = new Camera(video, {
-          onFrame: async () => {
-            await hands.send({ image: video });
-          },
-          width: 1280,
-          height: 720
+          onFrame: async () => { await hands.send({ image: video }); },
+          width: 1280, height: 720
         });
         camera.start();
       } catch (err){
@@ -225,31 +290,25 @@
         showToast('Camera permission needed', 'warn');
       }
     }
-
     initCamera();
 
     function onResults(results){
       octx.clearRect(0,0,overlay.width,overlay.height);
       if (!results.multiHandLandmarks || results.multiHandLandmarks.length === 0){
-        isDrawing = false; last = null; return; }
-
+        isDrawing = false; last = null; return;
+      }
       const landmarks = results.multiHandLandmarks[0];
 
-      // Draw skeleton overlay (subtle)
+      // Skeleton overlay (subtle)
       octx.save();
-      octx.globalAlpha = .65;
-      octx.lineWidth = 2;
-      octx.strokeStyle = 'rgba(146, 179, 255, .6)';
-      octx.fillStyle = 'rgba(90, 161, 255, .5)';
+      octx.globalAlpha = .6; octx.lineWidth = 2;
+      octx.strokeStyle = 'rgba(146,179,255,.55)'; octx.fillStyle = 'rgba(90,161,255,.45)';
       drawConnectors(octx, landmarks, HAND_CONNECTIONS);
       drawLandmarks(octx, landmarks);
       octx.restore();
 
       // Fingertip and pinch logic
-      const tip = toScreen(landmarks[8].x, landmarks[8].y);     // index tip
-      const thumb = toScreen(landmarks[4].x, landmarks[4].y);   // thumb tip
-
-      // Compute normalized pinch distance in original normalized space (not screen) for scale invariance
+      const tip = toScreen(landmarks[8].x, landmarks[8].y);
       const dx = landmarks[8].x - landmarks[4].x;
       const dy = landmarks[8].y - landmarks[4].y;
       const pinchDist = Math.hypot(dx, dy);
@@ -259,7 +318,7 @@
       const point = last ? { x: lerp(last.x, tip.x, 1 - smooth), y: lerp(last.y, tip.y, 1 - smooth) } : tip;
       last = point;
 
-      // Visualize pointer
+      // Visual pointer
       octx.save();
       octx.beginPath();
       octx.arc(point.x, point.y, 6, 0, Math.PI*2);
@@ -267,9 +326,8 @@
       octx.fill();
       octx.restore();
 
-      // Start/stop drawing with pinch
+      // Drawing
       if (pinchDist < pinchThreshold){
-        // begin or continue drawing
         const size = parseInt(sizeEl.value, 10);
         if (isEraser){
           pctx.globalCompositeOperation = 'destination-out';
@@ -280,7 +338,6 @@
           pctx.strokeStyle = colorEl.value;
           pctx.lineWidth = size;
         }
-
         if (!isDrawing){
           pctx.beginPath();
           pctx.moveTo(point.x, point.y);
@@ -290,20 +347,15 @@
           pctx.stroke();
         }
       } else {
-        // stop stroke smoothly
-        if (isDrawing){
-          pctx.closePath();
-          isDrawing = false;
-        }
+        if (isDrawing){ pctx.closePath(); isDrawing = false; }
       }
     }
 
-    // Handle tab visibility to avoid runaway CPU
+    // Tab visibility
     document.addEventListener('visibilitychange', ()=>{
       if (document.hidden){ camera && camera.stop(); setStatus('Paused (tab hidden)'); }
-      else { camera && camera.start(); setStatus('Tracking hand — pinch thumb + index to draw', true); }
+      else { camera && camera.start(); setStatus('Tracking — pinch thumb+index to draw', true); }
     });
-
   </script>
 </body>
 </html>
